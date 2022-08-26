@@ -95,14 +95,6 @@ namespace scpp
             {
                 return STATUS_CANFD_NOT_SUPPORTED;
             }
-
-            /* interface is ok - try to switch the socket into CAN FD mode */
-            if (setsockopt(m_socket, SOL_CAN_RAW, CAN_RAW_FD_FRAMES,
-                           &enable_canfd, sizeof(enable_canfd)))
-            {
-
-                return STATUS_ENABLE_FD_SUPPORT_ERROR;
-            }
         }
 
         struct timeval tv;
@@ -152,10 +144,12 @@ namespace scpp
         auto id = std::find(this->setIds.begin(), this->setIds.end(), msg.id);
         if (id != this->setIds.end())
         {
+            bcmFrame.msg_head.flags = TX_ANNOUNCE; // if update, then announce instead of settimer|starttimer
             bcmFrame.msg_head.can_id = std::distance(this->setIds.begin(), id);
         }
         else
         {
+            bcmFrame.msg_head.flags = SETTIMER | STARTTIMER; // new message, so settimer and starttimer
             this->setIds.push_back(msg.id);
             bcmFrame.msg_head.can_id = this->setIds.size() - 1;
         }
@@ -166,7 +160,6 @@ namespace scpp
         bcmFrame.msg_head.count = 0;
         bcmFrame.msg_head.nframes = 1;
         bcmFrame.msg_head.opcode = TX_SETUP;
-        bcmFrame.msg_head.flags = SETTIMER | STARTTIMER;
         bcmFrame.frame.can_id = msg.id;
         bcmFrame.frame.len = msg.len;
         bcmFrame.frame.flags = msg.flags;
@@ -177,6 +170,7 @@ namespace scpp
             /* ensure discrete CAN FD length values 0..8, 12, 16, 20, 24, 32, 64 */
             bcmFrame.frame.len = can_dlc2len(can_len2dlc(bcmFrame.frame.len));
             writeSize = sizeof(CanBCMFrameFD);
+            bcmFrame.msg_head.flags |= CAN_FD_FRAME;
         }
 
         if (::write(m_socket, &bcmFrame, writeSize) != writeSize)
@@ -190,5 +184,37 @@ namespace scpp
 #endif
         return STATUS_OK;
     }
+    SocketCanStatus BroadcastCan::removeBroadcast(const uint32_t id)
+    {
 
+#ifdef HAVE_SOCKETCAN_HEADERS
+        struct bcm_msg_head bcmHeader;
+
+        memset(&bcmHeader, 0, sizeof(bcmHeader));
+        bcmHeader.opcode = TX_DELETE;
+
+        auto index = std::find(this->setIds.begin(), this->setIds.end(), id);
+        if (index != this->setIds.end())
+        {
+            bcmHeader.can_id = std::distance(this->setIds.begin(), index);
+        }
+        else
+        {
+            return STATUS_OK; // no message ever setup with this id.
+        }
+        if (this->m_socket_mode == MODE_CANFD_MTU)
+        {
+            bcmHeader.flags = CAN_FD_FRAME;
+        }
+        size_t writeSize = sizeof(bcmHeader); // only need to write the header
+        if (::write(m_socket, &bcmHeader, writeSize) != writeSize)
+        {
+            perror("write");
+            return STATUS_WRITE_ERROR;
+        }
+#else
+        printf("Your operating system does not support socket can! \n");
+#endif
+        return STATUS_OK;
+    }
 }

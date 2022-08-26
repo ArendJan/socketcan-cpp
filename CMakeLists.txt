@@ -65,6 +65,10 @@ if (BUILD_EXAMPLES)
     set_target_properties(broadcast PROPERTIES DEBUG_POSTFIX _d)
     set_target_properties(broadcast PROPERTIES FOLDER examples)
     target_link_libraries(broadcast PRIVATE ::${PROJECT_NAME})
+    add_executable(broadcastFD examples/broadcastFD.cpp)
+    set_target_properties(broadcastFD PROPERTIES DEBUG_POSTFIX _d)
+    set_target_properties(broadcastFD PROPERTIES FOLDER examples)
+    target_link_libraries(broadcastFD PRIVATE ::${PROJECT_NAME})
 endif()
 
 

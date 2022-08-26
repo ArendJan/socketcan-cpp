@@ -15,31 +15,29 @@ void check(scpp::SocketCanStatus sc_status)
 int main()
 {
     scpp::BroadcastCan sockat_can;
-    if (sockat_can.open("vcan0", 3, scpp::MODE_CAN_MTU) == scpp::STATUS_OK)
+    if (sockat_can.open("vcan0", 3, scpp::MODE_CANFD_MTU) == scpp::STATUS_OK)
     {
         scpp::CanFrame frame;
         frame.id = 0x15;
-        frame.len = 4;
+        frame.len = 50;
         frame.data[0] = 1;
         frame.data[1] = 2;
         frame.data[2] = 3;
-        frame.data[3] = 4;
+        frame.data[49] = 4;
         frame.flags = 0;
-        auto write_sc_status = sockat_can.setBroadcast(frame, 100);
-
+        auto write_sc_status = sockat_can.setBroadcast(frame, 100); // set a first broadcast
         check(write_sc_status);
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        frame.id = 0x16;
-        write_sc_status = sockat_can.setBroadcast(frame, 100);
-        check(write_sc_status);
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1050));
 
         frame.id = 0x15;
         frame.data[0] = 255;
-        write_sc_status = sockat_can.setBroadcast(frame, 100);
+        write_sc_status = sockat_can.setBroadcast(frame, 100); // update a broadcast
         check(write_sc_status);
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1050));
+        frame.id = 0x16;
+        write_sc_status = sockat_can.setBroadcast(frame, 100); // set a second broadcast
+        check(write_sc_status);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1050));
         write_sc_status = sockat_can.removeBroadcast(0x16);
         check(write_sc_status);
         write_sc_status = sockat_can.removeBroadcast(0x20); // wont do anything, because this message is never set
@@ -50,6 +48,7 @@ int main()
     }
     else
     {
+        perror("asdf");
         printf("Cannot open can socket!");
     }
     return 0;
