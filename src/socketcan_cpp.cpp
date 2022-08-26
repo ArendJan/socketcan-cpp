@@ -66,7 +66,7 @@ namespace scpp
             return STATUS_SOCKET_CREATE_ERROR;
         }
         int mtu, enable_canfd = 1;
-        struct sockaddr_can addr;
+        struct sockaddr_can addr = {0};
         struct ifreq ifr;
 
         strncpy(ifr.ifr_name, can_interface.c_str(), IFNAMSIZ - 1);
