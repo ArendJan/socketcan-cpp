@@ -9,6 +9,10 @@
 #else
 #include <linux/can.h>
 #include <linux/can/bcm.h>
+extern const unsigned char dlc2len[];
+unsigned char can_dlc2len(unsigned char can_dlc);
+extern const unsigned char len2dlc[];
+unsigned char can_len2dlc(unsigned char len);
 #endif
 
 namespace scpp
