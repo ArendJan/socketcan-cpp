@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <algorithm>
 #ifdef HAVE_SOCKETCAN_HEADERS
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,10 +49,10 @@ unsigned char can_len2dlc(unsigned char len)
 
 namespace scpp
 {
-    SocketCan::SocketCan()
+    BroadcastCan::BroadcastCan()
     {
     }
-    SocketCanStatus SocketCan::open(const std::string &can_interface, int32_t read_timeout_ms, SocketMode mode)
+    SocketCanStatus BroadcastCan::open(const std::string &can_interface, int32_t read_timeout_ms, SocketMode mode)
     {
         m_interface = can_interface;
         m_socket_mode = mode;
@@ -60,7 +60,7 @@ namespace scpp
 #ifdef HAVE_SOCKETCAN_HEADERS
 
         /* open socket */
-        if ((m_socket = socket(PF_CAN, SOCK_RAW, CAN_RAW)) < 0)
+        if ((m_socket = socket(PF_CAN, SOCK_DGRAM, CAN_BCM)) < 0)
         {
             perror("socket");
             return STATUS_SOCKET_CREATE_ERROR;
@@ -105,28 +105,12 @@ namespace scpp
             }
         }
 
-        //const int timestamping_flags = (SOF_TIMESTAMPING_SOFTWARE | \
-        //    SOF_TIMESTAMPING_RX_SOFTWARE | \
-        //    SOF_TIMESTAMPING_RAW_HARDWARE);
-
-        // if (setsockopt(m_socket, SOL_SOCKET, SO_TIMESTAMPING,
-        //     &timestamping_flags, sizeof(timestamping_flags)) < 0) {
-        //     perror("setsockopt SO_TIMESTAMPING is not supported by your Linux kernel");
-        // }
-
-        ///* disable default receive filter on this RAW socket */
-        ///* This is obsolete as we do not read from the socket at all, but for */
-        ///* this reason we can remove the receive list in the Kernel to save a */
-        ///* little (really a very little!) CPU usage.                          */
-        // setsockopt(s, SOL_CAN_RAW, CAN_RAW_FILTER, NULL, 0);
-
-        // LINUX
         struct timeval tv;
         tv.tv_sec = 0;                         /* 30 Secs Timeout */
         tv.tv_usec = m_read_timeout_ms * 1000; // Not init'ing this can cause strange errors
         setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(struct timeval));
 
-        if (bind(m_socket, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+        if (connect(m_socket, (struct sockaddr *)&addr, sizeof(addr)) < 0)
         {
             perror("bind");
             return STATUS_BIND_ERROR;
@@ -137,69 +121,74 @@ namespace scpp
 #endif
         return STATUS_OK;
     }
-    SocketCanStatus SocketCan::write(const CanFrame &msg)
-    {
-#ifdef HAVE_SOCKETCAN_HEADERS
-        struct canfd_frame frame;
-        memset(&frame, 0, sizeof(frame)); /* init CAN FD frame, e.g. LEN = 0 */
-        // convert CanFrame to canfd_frame
-        frame.can_id = msg.id;
-        frame.len = msg.len;
-        frame.flags = msg.flags;
-        memcpy(frame.data, msg.data, msg.len);
 
-        if (m_socket_mode == MODE_CANFD_MTU)
-        {
-            /* ensure discrete CAN FD length values 0..8, 12, 16, 20, 24, 32, 64 */
-            frame.len = can_dlc2len(can_len2dlc(frame.len));
-        }
-        /* send frame */
-        if (::write(m_socket, &frame, int(m_socket_mode)) != int(m_socket_mode))
-        {
-            perror("write");
-            return STATUS_WRITE_ERROR;
-        }
-#else
-        printf("Your operating system does not support socket can! \n");
-#endif
-        return STATUS_OK;
-    }
-    SocketCanStatus SocketCan::read(CanFrame &msg)
-    {
-#ifdef HAVE_SOCKETCAN_HEADERS
-        struct canfd_frame frame;
-
-        // Read in a CAN frame
-        auto num_bytes = ::read(m_socket, &frame, CANFD_MTU);
-        if (num_bytes != CAN_MTU && num_bytes != CANFD_MTU)
-        {
-            // perror("Can read error");
-            return STATUS_READ_ERROR;
-        }
-
-        msg.id = frame.can_id;
-        msg.len = frame.len;
-        msg.flags = frame.flags;
-        memcpy(msg.data, frame.data, frame.len);
-#else
-        printf("Your operating system does not support socket can! \n");
-#endif
-        return STATUS_OK;
-    }
-    SocketCanStatus SocketCan::close()
+    SocketCanStatus BroadcastCan::close()
     {
 #ifdef HAVE_SOCKETCAN_HEADERS
         ::close(m_socket);
 #endif
         return STATUS_OK;
     }
-    const std::string &SocketCan::interfaceName() const
+    const std::string &BroadcastCan::interfaceName() const
     {
         return m_interface;
     }
-    SocketCan::~SocketCan()
+    BroadcastCan::~BroadcastCan()
     {
         close();
+    }
+
+    SocketCanStatus BroadcastCan::setBroadcast(const CanFrame &msg, uint32_t intervalMs)
+    {
+
+#ifdef HAVE_SOCKETCAN_HEADERS
+        struct CanBCMFrameFD bcmFrame;
+
+        // struct canfd_frame frame;
+        memset(&bcmFrame, 0, sizeof(bcmFrame)); /* init CAN FD frame, e.g. LEN = 0 */
+
+        // TODO: set bcmframe.header
+        // TODO: find can id of header
+        auto id = std::find(this->setIds.begin(), this->setIds.end(), msg.id);
+        if (id != this->setIds.end())
+        {
+            bcmFrame.msg_head.can_id = std::distance(this->setIds.begin(), id);
+        }
+        else
+        {
+            this->setIds.push_back(msg.id);
+            bcmFrame.msg_head.can_id = this->setIds.size() - 1;
+        }
+        bcmFrame.msg_head.ival1.tv_sec = 0;
+        bcmFrame.msg_head.ival1.tv_usec = 0;
+        bcmFrame.msg_head.ival2.tv_sec = intervalMs / 1000;
+        bcmFrame.msg_head.ival2.tv_usec = (intervalMs % 1000) * 1000;
+        bcmFrame.msg_head.count = 0;
+        bcmFrame.msg_head.nframes = 1;
+        bcmFrame.msg_head.opcode = TX_SETUP;
+        bcmFrame.msg_head.flags = SETTIMER | STARTTIMER;
+        bcmFrame.frame.can_id = msg.id;
+        bcmFrame.frame.len = msg.len;
+        bcmFrame.frame.flags = msg.flags;
+        memcpy(bcmFrame.frame.data, msg.data, msg.len);
+        size_t writeSize = sizeof(CanBCMFrame);
+        if (m_socket_mode == MODE_CANFD_MTU)
+        {
+            /* ensure discrete CAN FD length values 0..8, 12, 16, 20, 24, 32, 64 */
+            bcmFrame.frame.len = can_dlc2len(can_len2dlc(bcmFrame.frame.len));
+            writeSize = sizeof(CanBCMFrameFD);
+        }
+
+        if (::write(m_socket, &bcmFrame, writeSize) != writeSize)
+        {
+            perror("write");
+            return STATUS_WRITE_ERROR;
+        }
+
+#else
+        printf("Your operating system does not support socket can! \n");
+#endif
+        return STATUS_OK;
     }
 
 }

@@ -23,6 +23,7 @@ set(PUBLIC_HDRS
 
 set(SRCS 
     src/socketcan_cpp.cpp
+    src/broadcastcan_cpp.cpp
 )
 
 add_library(${PROJECT_NAME} ${PUBLIC_HDRS} ${SRCS})
@@ -60,6 +61,10 @@ if (BUILD_EXAMPLES)
     set_target_properties(read_write PROPERTIES DEBUG_POSTFIX _d)
     set_target_properties(read_write PROPERTIES FOLDER examples)
     target_link_libraries(read_write PRIVATE ::${PROJECT_NAME})
+    add_executable(broadcast examples/broadcast.cpp)
+    set_target_properties(broadcast PROPERTIES DEBUG_POSTFIX _d)
+    set_target_properties(broadcast PROPERTIES FOLDER examples)
+    target_link_libraries(broadcast PRIVATE ::${PROJECT_NAME})
 endif()
 
 
