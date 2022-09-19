@@ -6,6 +6,26 @@
 #ifndef HAVE_SOCKETCAN_HEADERS
 #define CAN_MTU 0
 #define CANFD_MTU 1
+struct bcm_msg_head {
+    uint32_t flags;
+    uint32_t  can_id;
+    timeval_fake ival1;
+    timeval_fake ival2;
+    int count;
+    int nframes;
+    uint32_t opcode;
+};
+
+struct canfd_frame {
+    uint32_t id;
+    int len;
+    uint8_t data[64];
+};
+struct can_frame {
+    uint32_t id;
+    int len;
+    uint8_t data[8];
+};
 #else
 #include <linux/can.h>
 #include <linux/can/bcm.h>
