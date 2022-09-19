@@ -9,8 +9,8 @@
 struct bcm_msg_head {
     uint32_t flags;
     uint32_t  can_id;
-    timeval_fake ival1;
-    timeval_fake ival2;
+    timeval ival1;
+    timeval ival2;
     int count;
     int nframes;
     uint32_t opcode;
