@@ -6,6 +6,7 @@
 #ifndef HAVE_SOCKETCAN_HEADERS
 #define CAN_MTU 0
 #define CANFD_MTU 1
+#include <WinSock2.h>
 struct bcm_msg_head {
     uint32_t flags;
     uint32_t  can_id;
