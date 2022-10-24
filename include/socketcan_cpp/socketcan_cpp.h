@@ -104,7 +104,7 @@ namespace scpp
         SOCKETCAN_CPP_EXPORT SocketCan &operator=(const SocketCan &) = delete;
         SOCKETCAN_CPP_EXPORT SocketCanStatus open(const std::string &can_interface, int32_t read_timeout_ms = 3, SocketMode mode = MODE_CAN_MTU);
 
-        SOCKETCAN_CPP_EXPORT SocketCanStatus setBroadcast(const CanFrame &msg, uint32_t intervalMs);
+        SOCKETCAN_CPP_EXPORT SocketCanStatus setBroadcast(const CanFrame &msg, uint32_t intervalMs, int index = -1);
         SOCKETCAN_CPP_EXPORT SocketCanStatus removeBroadcast(const uint32_t id);
         SOCKETCAN_CPP_EXPORT SocketCanStatus close();
         SOCKETCAN_CPP_EXPORT const std::string &interfaceName() const;

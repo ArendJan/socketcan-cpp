@@ -100,7 +100,7 @@ namespace scpp
         close();
     }
 
-    SocketCanStatus BroadcastCan::setBroadcast(const CanFrame &msg, uint32_t intervalMs)
+    SocketCanStatus BroadcastCan::setBroadcast(const CanFrame &msg, uint32_t intervalMs, int index)
     {
 
 #ifdef HAVE_SOCKETCAN_HEADERS
@@ -111,17 +111,32 @@ namespace scpp
 
         // TODO: set bcmframe.header
         // TODO: find can id of header
-        auto id = std::find(this->setIds.begin(), this->setIds.end(), msg.id);
-        if (id != this->setIds.end())
+        if (index == -1)
         {
-            bcmFrame.msg_head.flags = TX_ANNOUNCE; // if update, then announce instead of settimer|starttimer
-            bcmFrame.msg_head.can_id = std::distance(this->setIds.begin(), id);
-        }
-        else
-        {
-            bcmFrame.msg_head.flags = SETTIMER | STARTTIMER; // new message, so settimer and starttimer
-            this->setIds.push_back(msg.id);
-            bcmFrame.msg_head.can_id = this->setIds.size() - 1;
+            auto id = std::find(this->setIds.begin(), this->setIds.end(), msg.id);
+            if (id != this->setIds.end())
+            {
+                bcmFrame.msg_head.flags = TX_ANNOUNCE; // if update, then announce instead of settimer|starttimer
+                bcmFrame.msg_head.can_id = std::distance(this->setIds.begin(), id);
+            }
+            else
+            {
+                bcmFrame.msg_head.flags = SETTIMER | STARTTIMER; // new message, so settimer and starttimer
+                this->setIds.push_back(msg.id);
+                bcmFrame.msg_head.can_id = this->setIds.size() - 1;
+            }
+        } else {
+            if (index <= this->setIds.size())
+            {
+                bcmFrame.msg_head.flags = TX_ANNOUNCE; // if update, then announce instead of settimer|starttimer
+                bcmFrame.msg_head.can_id = index;
+            }
+            else
+            {
+                bcmFrame.msg_head.flags = SETTIMER | STARTTIMER; // new message, so settimer and starttimer
+                this->setIds.push_back(msg.id);
+                bcmFrame.msg_head.can_id = index;
+            }
         }
         bcmFrame.msg_head.ival1.tv_sec = 0;
         bcmFrame.msg_head.ival1.tv_usec = 0;
