@@ -12,7 +12,7 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-
+#include <iostream>
 #include <linux/can/raw.h>
 
 #endif
@@ -86,6 +86,7 @@ namespace scpp
 
     SocketCanStatus BroadcastCan::close()
     {
+        std::cout << "close bcm????????????????" << std::endl;
 #ifdef HAVE_SOCKETCAN_HEADERS
         ::close(m_socket);
 #endif
@@ -126,7 +127,7 @@ namespace scpp
                 bcmFrame.msg_head.can_id = this->setIds.size() - 1;
             }
         } else {
-            if (index <= this->setIds.size())
+            if (index < this->setIds.size())
             {
                 bcmFrame.msg_head.flags = TX_ANNOUNCE; // if update, then announce instead of settimer|starttimer
                 bcmFrame.msg_head.can_id = index;
