@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <algorithm>
+#include <iostream>
 #ifdef HAVE_SOCKETCAN_HEADERS
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,7 +13,7 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <iostream>
+
 #include <linux/can/raw.h>
 
 #endif
