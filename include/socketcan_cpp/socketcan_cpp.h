@@ -3,16 +3,15 @@
 #include <string>
 #include <socketcan_cpp/socketcan_cpp_export.h>
 #include <vector>
-#include <sys/time.h>
-
-#ifndef HAVE_SOCKETCAN_HEADERS
-#define CAN_MTU 0
-#define CANFD_MTU 1
 #if defined(WIN32) || defined(_WIN32)
 #include <WinSock2.h>
 #else 
 #include <sys/time.h>
 #endif
+
+#ifndef HAVE_SOCKETCAN_HEADERS
+#define CAN_MTU 0
+#define CANFD_MTU 1
 
 struct bcm_msg_head {
     uint32_t flags;
